@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Freelancy - Premium MVP</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&display=swap');
+  body { font-family: 'Cairo', sans-serif; margin:0; background: linear-gradient(135deg,#74ebd5,#ACB6E5); min-height:100vh;}
+  header { background:#1e88e5; color:white; padding:1rem 2rem; display:flex; justify-content:space-between; align-items:center; box-shadow:0 4px 10px rgba(0,0,0,0.2);}
+  header h1 { margin:0; font-size:1.8rem; }
+  nav a { color:white; margin-left:1.2rem; text-decoration:none; font-weight:bold; cursor:pointer; transition:0.3s; }
+  nav a:hover { text-decoration:underline; color:#ffeb3b; }
+  .container { max-width:1000px; margin:2rem auto; background:white; padding:2rem; border-radius:15px; box-shadow:0 8px 20px rgba(0,0,0,0.2);}
+  h2 { color:#333; margin-bottom:1rem; }
+  input, textarea { width:100%; padding:0.6rem; margin:0.5rem 0 1rem; border-radius:8px; border:1px solid #ccc; font-size:1rem; }
+  button { background:#1e88e5; color:white; border:none; padding:0.6rem 1.2rem; cursor:pointer; border-radius:8px; font-weight:bold; transition:0.3s; }
+  button:hover { background:#1565c0; transform:scale(1.05);}
+  .hidden { display:none; }
+  .card { border-radius:10px; padding:1rem; margin-bottom:1rem; background:#fafafa; box-shadow:0 4px 12px rgba(0,0,0,0.1); transition:0.3s;}
+  .card:hover { box-shadow:0 8px 20px rgba(0,0,0,0.2); transform:translateY(-2px);}
+  .profile-card { background:#e3f2fd; }
+  .messages-container { max-height:300px; overflow-y:auto; margin-bottom:1rem;}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Freelancy</h1>
+  <nav>
+    <a onclick="showSection('loginSection')">Login/Signup</a>
+    <a onclick="showSection('projectsSection')">Projects</a>
+    <a onclick="showSection('profileSection')">My Profile</a>
+    <a onclick="showSection('messagesSection')">Messages</a>
+  </nav>
+</header>
+
+<!-- Login/Signup -->
+<div class="container" id="loginSection">
+  <h2>Login / Signup</h2>
+  <input type="text" id="username" placeholder="Username">
+  <input type="password" id="password" placeholder="Password">
+  <button onclick="signup()">Signup</button>
+  <button onclick="login()">Login</button>
+</div>
+
+<!-- Projects -->
+<div class="container hidden" id="projectsSection">
+  <h2>Open Projects</h2>
+  <div id="projectList"></div>
+  <h2>Post a New Project</h2>
+  <input type="text" id="title" placeholder="Project Title">
+  <textarea id="description" placeholder="Project Description"></textarea>
+  <button onclick="addProject()">Post Project</button>
+</div>
+
+<!-- Profile -->
+<div class="container hidden" id="profileSection">
+  <h2>My Profile</h2>
+  <input type="text" id="skills" placeholder="Skills (comma separated)">
+  <textarea id="bio" placeholder="Short Bio"></textarea>
+  <button onclick="updateProfile()">Update Profile</button>
+  <div id="profileInfo"></div>
+</div>
+
+<!-- Messages -->
+<div class="container hidden" id="messagesSection">
+  <h2>Messages</h2>
+  <div class="messages-container" id="messageList"></div>
+  <input type="text" id="messageInput" placeholder="Type your message...">
+  <button onclick="sendMessage()">Send</button>
+</div>
+
+<script>
+  let currentUser = null;
+
+  function showSection(sectionId){
+    document.querySelectorAll('.container').forEach(c => c.classList.add('hidden'));
+    document.getElementById(sectionId).classList.remove('hidden');
+    if(sectionId==='profileSection') renderProfile();
+    if(sectionId==='projectsSection') renderProjects();
+    if(sectionId==='messagesSection') renderMessages();
+  }
+
+  function signup(){
+    const username=document.getElementById('username').value.trim();
+    const password=document.getElementById('password').value.trim();
+    if(!username||!password){ alert("Fill all fields!"); return; }
+    let users=JSON.parse(localStorage.getItem('users')||'{}');
+    if(users[username]){ alert("Username exists!"); return; }
+    users[username]={password,projects:[],profile:{skills:'',bio:''},messages:[]};
+    localStorage.setItem('users',JSON.stringify(users));
+    alert("Signup successful! Now login.");
+  }
+
+  function login(){
+    const username=document.getElementById('username').value.trim();
+    const password=document.getElementById('password').value.trim();
+    let users=JSON.parse(localStorage.getItem('users')||'{}');
+    if(users[username] && users[username].password===password){
+      currentUser=username;
+      alert("Logged in as "+username);
+      showSection('projectsSection');
+    }else alert("Invalid credentials!");
+  }
+
+  function addProject(){
+    if(!currentUser){ alert("Login first!"); return; }
+    const title=document.getElementById('title').value.trim();
+    const desc=document.getElementById('description').value.trim();
+    if(!title||!desc){ alert("Fill all fields!"); return; }
+    let projects=JSON.parse(localStorage.getItem('projects')||'[]');
+    projects.push({title,desc,author:currentUser,applicants:[]});
+    localStorage.setItem('projects',JSON.stringify(projects));
+    document.getElementById('title').value='';
+    document.getElementById('description').value='';
+    renderProjects();
+  }
+
+  function renderProjects(){
+    const projectList=document.getElementById('projectList');
+    const projects=JSON.parse(localStorage.getItem('projects')||'[]');
+    projectList.innerHTML='';
+    projects.slice().reverse().forEach((p,i)=>{
+      const div=document.createElement('div');
+      div.className='card project';
+      div.innerHTML=`<h3>${p.title}</h3><p>${p.desc}</p><strong>Author:</strong> ${p.author}<br>
+                     <button onclick="applyProject(${i},this)">Apply</button>`;
+      projectList.appendChild(div);
+    });
+  }
+
+  function applyProject(index,btn){
+    let projects=JSON.parse(localStorage.getItem('projects')||'[]');
+    if(!currentUser){ alert("Login first!"); return; }
+    if(projects[index].applicants.includes(currentUser)){ alert("Already applied!"); return; }
+    projects[index].applicants.push(currentUser);
+    localStorage.setItem('projects',JSON.stringify(projects));
+    btn.textContent="Applied!";
+    btn.disabled=true;
+    btn.style.background="#4caf50";
+  }
+
+  function updateProfile(){
+    if(!currentUser){ alert("Login first!"); return; }
+    let users=JSON.parse(localStorage.getItem('users')||'{}');
+    users[currentUser].profile.skills=document.getElementById('skills').value.trim();
+    users[currentUser].profile.bio=document.getElementById('bio').value.trim();
+    localStorage.setItem('users',JSON.stringify(users));
+    renderProfile();
+  }
+
+  function renderProfile(){
+    if(!currentUser) return;
+    let users=JSON.parse(localStorage.getItem('users')||'{}');
+    const p=users[currentUser].profile;
+    const infoDiv=document.getElementById('profileInfo');
+    infoDiv.innerHTML=`<div class="card profile-card"><strong>Skills:</strong> ${p.skills}<br><strong>Bio:</strong> ${p.bio}</div>`;
+  }
+
+  function sendMessage(){
+    if(!currentUser){ alert("Login first!"); return; }
+    const msg=document.getElementById('messageInput').value.trim();
+    if(!msg) return;
+    let users=JSON.parse(localStorage.getItem('users')||'{}');
+    users[currentUser].messages.push({from:currentUser,text:msg,time:new Date().toLocaleTimeString()});
+    localStorage.setItem('users',JSON.stringify(users));
+    document.getElementById('messageInput').value='';
+    renderMessages();
+  }
+
+  function renderMessages(){
+    if(!currentUser) return;
+    let users=JSON.parse(localStorage.getItem('users')||'{}');
+    const msgs=users[currentUser].messages;
+    const list=document.getElementById('messageList');
+    list.innerHTML='';
+    msgs.forEach(m=>{
+      const div=document.createElement('div');
+      div.className='card message';
+      div.innerHTML=`<strong>${m.from}:</strong> ${m.text} <em style="float:right">${m.time}</em>`;
+      list.appendChild(div);
+    });
+  }
+</script>
+</body>
+</html>
